@@ -174,12 +174,11 @@ else:
         .agg(
             FRECUENCIA=("Número de Ticket", "count"),
             DURACION_TOTAL_HORAS=("DURACION_HORAS", "sum"),
-            CAUSA_MAS_FRECUENTE=("CAUSA", lambda x: x.mode()[0] if not x.empty else "N/A")
+            # next(iter(...)) obtiene el primer valor de manera segura o devuelve "N/A" si está vacío
+            CAUSA_MAS_FRECUENTE=("CAUSA", lambda x: next(iter(x.mode()), "N/A")) 
         )
         .reset_index()
     )
-    top_sites["DURACION_TOTAL_HORAS"] = top_sites["DURACION_TOTAL_HORAS"].round(2)
-    top_sites = top_sites.sort_values(by=["FRECUENCIA", "DURACION_TOTAL_HORAS"], ascending=[False, False]).head(10)
     
     with st.container():
         st.markdown(
