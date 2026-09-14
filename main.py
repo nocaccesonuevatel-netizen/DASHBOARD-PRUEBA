@@ -1,9 +1,19 @@
 # -*- coding: utf-8 -*-
-import shutil, sys
+import os
+import shutil
+import sys
+import streamlit as st
+import streamlit.components.v1 as components
 
-SRC = "codigo html evento acceso.txt"
-DST = "dashboard_noc_mejorado.html"
+# Configuración de página de Streamlit
+st.set_page_config(page_title="Dashboard NOC", layout="wide")
 
+# Rutas de los archivos usando la carpeta del proyecto
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SRC = os.path.join(BASE_DIR, "codigo html evento acceso.txt")
+DST = os.path.join(BASE_DIR, "dashboard_noc_mejorado.html")
+
+# Lectura del archivo de origen
 html = open(SRC, encoding="utf-8").read()
 original = html
 
@@ -12,7 +22,6 @@ def patch(old, new, desc):
     n = html.count(old)
     assert n == 1, f"[FALLO] '{desc}': se esperaba 1 ocurrencia, hay {n}"
     html = html.replace(old, new)
-    print(f"[OK] {desc}")
 
 # ---------- 1) Bug: Disponibilidad 0.000% ----------
 patch("100-H/(n*24)*100",
@@ -31,7 +40,7 @@ patch("cC=(S)=>{if(!S)return;let H=new FileReader;H.onload=",
       "let H=new FileReader;H.onerror=()=>window.alert(\"No se pudo leer el archivo seleccionado.\");H.onload=",
       "Manejo de errores en carga de Excel")
 
-# ---------- 4) Documento válido (el archivo empieza directo en <body>) ----------
+# ---------- 4) Documento válido ----------
 HEAD = '''<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -45,11 +54,8 @@ HEAD = '''<!DOCTYPE html>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <style>
-  /* Rendimiento: renderizado diferido de cards fuera de pantalla */
   .card{content-visibility:auto;contain-intrinsic-size:220px;}
-  /* Accesibilidad: indicador de foco visible */
   .select-dark:focus-visible,button:focus-visible{outline:2px solid #f5b800;outline-offset:2px;}
-  /* Modo impresión */
   @media print{
     body{background:#fff !important;}
     header{position:static !important;}
@@ -63,15 +69,13 @@ HEAD = '''<!DOCTYPE html>
 
 assert html.lstrip().startswith("<body>"), "El archivo no empieza con <body>"
 html = HEAD + html[html.index("<body>") + len("<body>"):].replace("\n  \n\n</body>", "\n\nMEJORAS_AQUI\n</body>", 1)
-print("[OK] Estructura HTML5 + head completo")
 
-# ---------- 5) Capa de mejoras externa (accesibilidad, teclado, errores) ----------
+# ---------- 5) Capa de mejoras ----------
 MEJORAS = '''
 <script>
 (function(){
   "use strict";
 
-  /* ---- Accesibilidad: labels, landmarks y tabs ---- */
   function enhance(){
     var root = document.getElementById("root");
     var app  = root && root.firstElementChild;
@@ -90,15 +94,12 @@ MEJORAS = '''
     if(btns[1]) btns[1].setAttribute("aria-label","Exportar datos filtrados a Excel");
     if(btns[2]) btns[2].setAttribute("aria-label","Limpiar todos los filtros");
 
-    /* Tabs: roles + navegación con teclado */
     var tabs = Array.prototype.slice.call(app.querySelectorAll(".overflow-x-auto > div > button"));
     if(!tabs.length) return;
     var list = tabs[0].parentElement;
     list.setAttribute("role","tablist");
     function sync(){
       tabs.forEach(function(t){
-        var activa = !!t.querySelector(".bg-\\[\\#f5b800\\]") ||
-                     !!(t.nextElementSibling === null && false);
         var activaReal = t.querySelector("span.bg-\\[\\#f5b800\\]");
         t.setAttribute("role","tab");
         t.setAttribute("aria-selected", activaReal ? "true" : "false");
@@ -123,7 +124,6 @@ MEJORAS = '''
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",enhance);
   else enhance();
 
-  /* ---- Resiliencia: toast global de errores ---- */
   function toast(msg, color){
     var t = document.createElement("div");
     t.textContent = msg;
@@ -141,8 +141,6 @@ MEJORAS = '''
 </script>
 '''
 html = html.replace("MEJORAS_AQUI", MEJORAS)
-print("[OK] Capa de accesibilidad / teclado / errores")
 
-assert html != original, "Sin cambios"
-open(DST, "w", encoding="utf-8").write(html)
-print(f"\n✔ Generado: {DST} ({len(html):,} bytes)")
+# Renderizar en Streamlit
+components.html(html, height=1000, scrolling=True)
